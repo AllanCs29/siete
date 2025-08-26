@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -72,7 +73,6 @@ class MainActivity : ComponentActivity() {
                         )
                     },
                     bottomBar = {
-                        // Barra inferior ligera (sin NavigationBar para evitar dependencias)
                         Surface(tonalElevation = 3.dp) {
                             Row(
                                 Modifier
@@ -124,15 +124,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-@Composable
-fun TodayTab(
-    items: List<RoutineItem>,
-    onAdd: (String, String?) -> Unit,
-    onToggle: (Int, Boolean) -> Unit,
-    onGenerate: () -> Unit,
-    onSave: () -> Unit,
-) {
-/** ---------- UI helpers ---------- */
+
+/* ---------- UI helpers ---------- */
 
 @Composable
 private fun BottomTabButton(
@@ -155,7 +148,7 @@ private fun BottomTabButton(
     }
 }
 
-/** ---------- Tabs ---------- */
+/* ---------- Tabs ---------- */
 
 @Composable
 fun TodayTab(
@@ -208,10 +201,9 @@ fun TodayTab(
     Text("$done / ${items.size} completadas", fontWeight = FontWeight.SemiBold)
     Spacer(Modifier.height(8.dp))
 
-    // Lista con padding inferior para no chocar con la barra de navegación
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(bottom = 96.dp)
+        contentPadding = PaddingValues(bottom = 96.dp) // para no tapar con la bottom bar
     ) {
         itemsIndexed(display) { _, item ->
             ElevatedCard(Modifier.fillMaxWidth()) {
@@ -236,6 +228,9 @@ fun TodayTab(
             }
         }
     }
+
+    Spacer(Modifier.height(8.dp))
+    CompactPomodoro()
 }
 
 @Composable
@@ -399,7 +394,7 @@ fun StatsTab(history: List<DayHistory>) {
     }
 }
 
-/** ---------- Utilidades ---------- */
+/* ---------- Utilidades ---------- */
 
 fun generateTodayPlan(): List<RoutineItem> {
     val dow = LocalDate.now().dayOfWeek
@@ -421,7 +416,74 @@ fun generateTodayPlan(): List<RoutineItem> {
     return list
 }
 
-    // --- Pomodoro compacto abajo (horizontal) ---
-    Spacer(Modifier.height(8.dp))
-    CompactPomodoro()
+/* ---------- Pomodoro compacto (horizontal) ---------- */
+
+@Composable
+private fun CompactPomodoro() {
+    var work by remember { mutableStateOf(25) }     // minutos
+    var rest by remember { mutableStateOf(5) }      // minutos
+    var remaining by remember { mutableStateOf(0) } // segundos
+    var running by remember { mutableStateOf(false) }
+    var onWork by remember { mutableStateOf(true) }
+    val scope = rememberCoroutineScope()
+
+    fun start() {
+        if (running) return
+        running = true
+        val target = (if (onWork) work else rest) * 60
+        if (remaining == 0) remaining = target
+        scope.launch {
+            while (running && remaining > 0) {
+                delay(1000)
+                remaining -= 1
+            }
+            if (remaining <= 0) {
+                running = false
+                onWork = !onWork
+                remaining = 0
+            }
+        }
+    }
+    fun pause() { running = false }
+    fun reset() { running = false; remaining = 0; onWork = true }
+
+    val target = (if (onWork) work else rest) * 60
+    val pct = if (target == 0) 0f else (target - remaining).coerceAtLeast(0) / target.toFloat()
+    val mm = remaining / 60
+    val ss = remaining % 60
+
+    ElevatedCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(if (onWork) "Pomodoro — Trabajo" else "Pomodoro — Descanso",
+                    fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text("%02d:%02d".format(mm, ss), fontWeight = FontWeight.Bold)
+            }
+            Spacer(Modifier.height(8.dp))
+            LinearProgressIndicator(progress = pct, modifier = Modifier.fillMaxWidth().height(6.dp))
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = work.toString(),
+                    onValueChange = { it.toIntOrNull()?.let { v -> work = v.coerceIn(5, 120) } },
+                    label = { Text("Trabajo (min)") },
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = rest.toString(),
+                    onValueChange = { it.toIntOrNull()?.let { v -> rest = v.coerceIn(1, 60) } },
+                    label = { Text("Descanso (min)") },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { start() }) { Text(if (running) "Continuar" else "Iniciar") }
+                FilledTonalButton(onClick = { pause() }) { Text("Pausar") }
+                OutlinedButton(onClick = { reset() }) { Text("Reset") }
+            }
+        }
+    }
 }
+
+
