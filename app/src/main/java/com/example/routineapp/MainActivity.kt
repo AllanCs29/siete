@@ -124,7 +124,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
+@Composable
+fun TodayTab(
+    items: List<RoutineItem>,
+    onAdd: (String, String?) -> Unit,
+    onToggle: (Int, Boolean) -> Unit,
+    onGenerate: () -> Unit,
+    onSave: () -> Unit,
+) {
 /** ---------- UI helpers ---------- */
 
 @Composable
@@ -412,4 +419,9 @@ fun generateTodayPlan(): List<RoutineItem> {
     list += RoutineItem("Fútbol: rondos/decisiones 20-30m", "21:00", false)
     list += RoutineItem("Higiene / Ordenar cuarto", "22:00", false)
     return list
+}
+
+    // --- Pomodoro compacto abajo (horizontal) ---
+    Spacer(Modifier.height(8.dp))
+    CompactPomodoro()
 }
