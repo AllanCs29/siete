@@ -80,14 +80,27 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 ) { inner ->
-                    Column(Modifier.padding(inner).padding(16.dp).fillMaxSize()) {
+                    Column(Modifier
+                        .padding(inner)
+                        .padding(16.dp)
+                        .fillMaxSize()
+                    ) {
                         when (tab) {
                             Tab.HOY -> TodayTab(
                                 items = items,
                                 onAdd = { title, time -> items = items + RoutineItem(title, time, false) },
-                                onToggle = { srcIndex, checked -> items = items.toMutableList().also { l -> l[srcIndex] = l[srcIndex].copy(done = checked) } },
-                                onGenerate = { val gen = generateTodayPlan(); items = gen; saveItems(ctx, gen); markToday(ctx) },
-                                onSave = { saveItems(ctx, items); items.forEach { it.time?.let { t -> scheduleReminder(ctx, it.title, t) } }; appendHistory(ctx, items.count{it.done}, items.size) }
+                                onToggle = { srcIndex, checked ->
+                                    items = items.toMutableList().also { l -> l[srcIndex] = l[srcIndex].copy(done = checked) }
+                                },
+                                onGenerate = {
+                                    val gen = generateTodayPlan()
+                                    items = gen; saveItems(ctx, gen); markToday(ctx)
+                                },
+                                onSave = {
+                                    saveItems(ctx, items)
+                                    items.forEach { it.time?.let { t -> scheduleReminder(ctx, it.title, t) } }
+                                    appendHistory(ctx, items.count { it.done }, items.size)
+                                }
                             )
                             Tab.PESAS -> WeightsTab(ex, onUpdate = { ex = it; saveExercises(ctx, it) })
                             Tab.FUTBOL -> FootballTab()
@@ -102,7 +115,13 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun NavTab(current: Tab, value: Tab, icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: (Tab) -> Unit) {
+private fun NavTab(
+    current: Tab,
+    value: Tab,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: (Tab) -> Unit
+) {
     NavigationBarItem(
         selected = current == value,
         onClick = { onClick(value) },
@@ -131,13 +150,21 @@ fun TodayTab(
     }
     Spacer(Modifier.height(12.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        FilledTonalButton(onClick = { if (title.isNotBlank()) { onAdd(title.trim(), time.ifBlank { null }); title = ""; time = "" } }) {
-            Icon(Icons.Outlined.Bolt, null); Spacer(Modifier.width(6	dp)); Text("Agregar")
+        FilledTonalButton(onClick = {
+            if (title.isNotBlank()) {
+                onAdd(title.trim(), time.ifBlank { null }); title = ""; time = ""
+            }
+        }) {
+            Icon(Icons.Outlined.Bolt, null); Spacer(Modifier.width(6.dp)); Text("Agregar")
         }
-        FilledTonalButton(onClick = onGenerate) { Icon(Icons.Outlined.Refresh, null); Spacer(Modifier.width(6.dp)); Text("Generar HOY") }
-        Button(onClick = onSave) { Icon(Icons.Outlined.Save, null); Spacer(Modifier.width(6.dp)); Text("Guardar + Notificar") }
+        FilledTonalButton(onClick = onGenerate) {
+            Icon(Icons.Outlined.Refresh, null); Spacer(Modifier.width(6.dp)); Text("Generar HOY")
+        }
+        Button(onClick = onSave) {
+            Icon(Icons.Outlined.Save, null); Spacer(Modifier.width(6.dp)); Text("Guardar + Notificar")
+        }
     }
-    Spacer(Modifier.height(12	dp))
+    Spacer(Modifier.height(12.dp))
     Row(verticalAlignment = Alignment.CenterVertically) {
         OutlinedTextField(search, { search = it }, label = { Text("Buscar") }, modifier = Modifier.weight(1f))
         Spacer(Modifier.width(12.dp))
@@ -147,28 +174,34 @@ fun TodayTab(
 
     val display = items
         .filter { it.title.contains(search, true) || search.isBlank() }
-        .sortedWith(compareBy<RoutineItem> { it.time?.let { t -> runCatching { LocalTime.parse(t) }.getOrNull() } }
-            .let { if (sortAsc) it else it.reversed() })
+        .sortedWith(
+            compareBy<RoutineItem> { it.time?.let { t -> runCatching { LocalTime.parse(t) }.getOrNull() } }
+                .let { if (sortAsc) it else it.reversed() }
+        )
 
     val done = items.count { it.done }
     val progress = if (items.isEmpty()) 0f else done.toFloat() / items.size
     Text("Progreso", style = MaterialTheme.typography.labelMedium)
     LinearProgressIndicator(progress = progress, modifier = Modifier.fillMaxWidth())
-    Spacer(Modifier.height(6.dp)); Text("$done / ${items.size} completadas", fontWeight = FontWeight.SemiBold)
-    Spacer(Modifier.height(8	dp))
+    Spacer(Modifier.height(6.dp))
+    Text("$done / ${items.size} completadas", fontWeight = FontWeight.SemiBold)
+    Spacer(Modifier.height(8.dp))
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        itemsIndexed(display) { _, it ->
+        itemsIndexed(display) { _, item ->
             ElevatedCard(Modifier.fillMaxWidth()) {
                 Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(it.time ?: "—", modifier = Modifier.width(64.dp), fontWeight = FontWeight.SemiBold)
+                    Text(item.time ?: "—", modifier = Modifier.width(64.dp), fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.width(8.dp))
-                    Checkbox(checked = it.done, onCheckedChange = { c ->
-                        val idx = items.indexOfFirst { src -> src.title == it.title && src.time == it.time && src.done == it.done }
-                        if (idx >= 0) onToggle(idx, c)
-                    })
-                    Spacer(Modifier.width(10	dp))
-                    Text(it.title)
+                    Checkbox(
+                        checked = item.done,
+                        onCheckedChange = { c ->
+                            val idx = items.indexOfFirst { src -> src.title == item.title && src.time == item.time }
+                            if (idx >= 0) onToggle(idx, c)
+                        }
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(item.title)
                 }
             }
         }
@@ -181,11 +214,11 @@ fun generateTodayPlan(): List<RoutineItem> {
     list += RoutineItem("Levantarse", "07:00", false)
     list += RoutineItem("Trabajo", "08:00", false)
     val pesas = when (dow) {
-        java.time.DayOfWeek.MONDAY -> "Pesas: Empuje (Pecho/Hombro/Tríceps)"
-        java.time.DayOfWeek.TUESDAY -> "Pesas: Piernas (Cuádriceps/Glúteo)"
-        java.time.DayOfWeek.WEDNESDAY -> "Pesas: Tirón (Espalda/Bíceps)"
-        java.time.DayOfWeek.THURSDAY -> "Pesas: Full Body ligero"
-        java.time.DayOfWeek.FRIDAY -> "Pesas: Core + movilidad"
+        DayOfWeek.MONDAY -> "Pesas: Empuje (Pecho/Hombro/Tríceps)"
+        DayOfWeek.TUESDAY -> "Pesas: Piernas (Cuádriceps/Glúteo)"
+        DayOfWeek.WEDNESDAY -> "Pesas: Tirón (Espalda/Bíceps)"
+        DayOfWeek.THURSDAY -> "Pesas: Full Body ligero"
+        DayOfWeek.FRIDAY -> "Pesas: Core + movilidad"
         else -> null
     }
     pesas?.let { list += RoutineItem(it, "16:00", false) }
@@ -202,16 +235,19 @@ fun WeightsTab(exList: List<Exercise>, onUpdate: (List<Exercise>) -> Unit) {
     LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         itemsIndexed(exList) { idx, e ->
             ElevatedCard {
-                Row(Modifier.fillMaxWidth().padding(14	dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(e.name, fontWeight = FontWeight.SemiBold)
                         Text("${e.sets} x ${e.reps} reps", style = MaterialTheme.typography.labelMedium)
                     }
-                    AssistChip(onClick = {
-                        val up = exList.toMutableList()
-                        up[idx] = e.copy(doneSets = (e.doneSets + 1).coerceAtMost(e.sets))
-                        onUpdate(up)
-                    }, label = { Text("+ set  ${e.doneSets}/${e.sets}") })
+                    AssistChip(
+                        onClick = {
+                            val up = exList.toMutableList()
+                            up[idx] = e.copy(doneSets = (e.doneSets + 1).coerceAtMost(e.sets))
+                            onUpdate(up)
+                        },
+                        label = { Text("+ set  ${e.doneSets}/${e.sets}") }
+                    )
                 }
             }
         }
@@ -221,28 +257,28 @@ fun WeightsTab(exList: List<Exercise>, onUpdate: (List<Exercise>) -> Unit) {
 fun defaultWeightsPlan(): List<Exercise> {
     val dow = LocalDate.now().dayOfWeek
     return when (dow) {
-        java.time.DayOfWeek.MONDAY -> listOf(
+        DayOfWeek.MONDAY -> listOf(
             Exercise("Press banca mancuernas", 4, 8),
             Exercise("Elevaciones laterales", 3, 12),
             Exercise("Fondos en banco", 3, 12),
             Exercise("Flexiones", 3, 15),
         )
-        java.time.DayOfWeek.TUESDAY -> listOf(
+        DayOfWeek.TUESDAY -> listOf(
             Exercise("Sentadilla goblet", 4, 10),
             Exercise("Zancadas", 3, 12),
             Exercise("Puente de glúteo", 3, 15),
         )
-        java.time.DayOfWeek.WEDNESDAY -> listOf(
+        DayOfWeek.WEDNESDAY -> listOf(
             Exercise("Remo mancuerna", 4, 10),
             Exercise("Curl bíceps alterno", 3, 12),
             Exercise("Face pull banda", 3, 15),
         )
-        java.time.DayOfWeek.THURSDAY -> listOf(
+        DayOfWeek.THURSDAY -> listOf(
             Exercise("Peso muerto rumano", 4, 8),
             Exercise("Press militar", 3, 10),
             Exercise("Plancha", 3, 45),
         )
-        java.time.DayOfWeek.FRIDAY -> listOf(
+        DayOfWeek.FRIDAY -> listOf(
             Exercise("Rueda abdominal / Hollow", 4, 12),
             Exercise("Farmer walk (pasos)", 4, 40),
             Exercise("Hip hinge movilidad", 3, 10),
@@ -251,22 +287,27 @@ fun defaultWeightsPlan(): List<Exercise> {
     }
 }
 
-@Composable fun FootballTab() {
-    Text("Fútbol — Toma de decisiones", fontWeight = FontWeight.Bold); Spacer(Modifier.height(8	dp))
+@Composable
+fun FootballTab() {
+    Text("Fútbol — Toma de decisiones", fontWeight = FontWeight.Bold)
+    Spacer(Modifier.height(8.dp))
     val drills = listOf(
         "Rondos 4v2: orientación corporal (2x6')",
         "1v1 cierre: temporización (2x5')",
         "Juego posicional 3 zonas (2x8')",
         "Primer control + pase (3x8')"
     )
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(10	dp)) {
-        itemsIndexed(drills) { _, d -> ElevatedCard { Text(d, modifier = Modifier.padding(14	dp)) } }
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        itemsIndexed(drills) { _, d ->
+            ElevatedCard { Text(d, modifier = Modifier.padding(14.dp)) }
+        }
     }
 }
 
 @Composable
 fun StudyTab() {
-    Text("Estudio — Pomodoro", fontWeight = FontWeight.Bold); Spacer(Modifier.height(8	dp))
+    Text("Estudio — Pomodoro", fontWeight = FontWeight.Bold)
+    Spacer(Modifier.height(8.dp))
     var work by remember { mutableStateOf(50) }
     var rest by remember { mutableStateOf(10) }
     var remaining by remember { mutableStateOf(0) }
@@ -281,7 +322,7 @@ fun StudyTab() {
         val startSec = (if (onWork) work else rest) * 60
         remaining = if (remaining > 0) remaining else startSec
         job = scope.launch {
-            while (remaining > 0 and running) {
+            while (running && remaining > 0) {
                 delay(1000)
                 remaining -= 1
             }
@@ -294,28 +335,41 @@ fun StudyTab() {
     fun reset() { running = false; job?.cancel(); remaining = 0; onWork = true }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
-        OutlinedTextField(work.toString(), { v -> v.toIntOrNull()?.let { work = it.coerceIn(5, 120) } },
-            label = { Text("Trabajo (min)") }, modifier = Modifier.width(150.dp))
-        Spacer(Modifier.width(12	dp))
-        OutlinedTextField(rest.toString(), { v -> v.toIntOrNull()?.let { rest = it.coerceIn(1, 60) } },
-            label = { Text("Descanso (min)") }, modifier = Modifier.width(150	dp))
+        OutlinedTextField(
+            value = work.toString(),
+            onValueChange = { v -> v.toIntOrNull()?.let { work = it.coerceIn(5, 120) } },
+            label = { Text("Trabajo (min)") },
+            modifier = Modifier.width(150.dp)
+        )
+        Spacer(Modifier.width(12.dp))
+        OutlinedTextField(
+            value = rest.toString(),
+            onValueChange = { v -> v.toIntOrNull()?.let { rest = it.coerceIn(1, 60) } },
+            label = { Text("Descanso (min)") },
+            modifier = Modifier.width(150.dp)
+        )
     }
-    Spacer(Modifier.height(10	dp))
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10	dp)) {
+    Spacer(Modifier.height(10.dp))
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Button(onClick = { start() }) { Text(if (running) "Continuar" else "Iniciar") }
         FilledTonalButton(onClick = { pause() }) { Text("Pausar") }
         OutlinedButton(onClick = { reset() }) { Text("Reset") }
         val mins = remaining / 60; val secs = remaining % 60
-        Spacer(Modifier.width(8	dp)); Text("Tiempo: %02d:%02d".format(mins, secs), fontWeight = FontWeight.Bold)
+        Spacer(Modifier.width(8.dp))
+        Text("Tiempo: %02d:%02d".format(mins, secs), fontWeight = FontWeight.Bold)
     }
 }
 
 @Composable
 fun StatsTab(history: List<DayHistory>) {
     val last14 = history.takeLast(14)
-    if (last14.isEmpty()) { Text("Sin datos aún. Guarda tu día para empezar a ver progreso."); return }
-    Text("Progreso — Línea (14 días)", fontWeight = FontWeight.Bold); Spacer(Modifier.height(8	dp))
-    Canvas(Modifier.fillMaxWidth().height(160	dp)) {
+    if (last14.isEmpty()) {
+        Text("Sin datos aún. Guarda tu día para empezar a ver progreso.")
+        return
+    }
+    Text("Progreso — Línea (14 días)", fontWeight = FontWeight.Bold)
+    Spacer(Modifier.height(8.dp))
+    Canvas(Modifier.fillMaxWidth().height(160.dp)) {
         if (last14.size >= 2) {
             val step = size.width / (last14.size - 1)
             var px = 0f
