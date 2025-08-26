@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.routineapp.data.*
@@ -71,19 +72,29 @@ class MainActivity : ComponentActivity() {
                         )
                     },
                     bottomBar = {
-                        NavigationBar {
-                            NavTab(tab, Tab.HOY, Icons.Outlined.Today, "Hoy") { tab = it }
-                            NavTab(tab, Tab.PESAS, Icons.Outlined.FitnessCenter, "Pesas") { tab = it }
-                            NavTab(tab, Tab.FUTBOL, Icons.Outlined.SportsSoccer, "Fútbol") { tab = it }
-                            NavTab(tab, Tab.ESTUDIO, Icons.Outlined.School, "Estudio") { tab = it }
-                            NavTab(tab, Tab.STATS, Icons.Outlined.Assessment, "Stats") { tab = it }
+                        // Barra inferior sin NavigationBar/NavigationBarItem
+                        Surface(tonalElevation = 3.dp) {
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                BottomTabButton(Tab.HOY, tab, Icons.Outlined.Today, "Hoy") { tab = it }
+                                BottomTabButton(Tab.PESAS, tab, Icons.Outlined.FitnessCenter, "Pesas") { tab = it }
+                                BottomTabButton(Tab.FUTBOL, tab, Icons.Outlined.SportsSoccer, "Fútbol") { tab = it }
+                                BottomTabButton(Tab.ESTUDIO, tab, Icons.Outlined.School, "Estudio") { tab = it }
+                                BottomTabButton(Tab.STATS, tab, Icons.Outlined.Assessment, "Stats") { tab = it }
+                            }
                         }
                     }
                 ) { inner ->
-                    Column(Modifier
-                        .padding(inner)
-                        .padding(16.dp)
-                        .fillMaxSize()
+                    Column(
+                        Modifier
+                            .padding(inner)
+                            .padding(16.dp)
+                            .fillMaxSize()
                     ) {
                         when (tab) {
                             Tab.HOY -> TodayTab(
@@ -115,19 +126,24 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun NavTab(
-    current: Tab,
+private fun BottomTabButton(
     value: Tab,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    current: Tab,
+    icon: ImageVector,
     label: String,
     onClick: (Tab) -> Unit
 ) {
-    NavigationBarItem(
-        selected = current == value,
-        onClick = { onClick(value) },
-        icon = { Icon(icon, label) },
-        label = { Text(label) }
-    )
+    val selected = current == value
+    val color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(72.dp)
+    ) {
+        IconButton(onClick = { onClick(value) }) {
+            Icon(icon, label, tint = color)
+        }
+        Text(label, style = MaterialTheme.typography.labelSmall, color = color)
+    }
 }
 
 @Composable
@@ -154,15 +170,9 @@ fun TodayTab(
             if (title.isNotBlank()) {
                 onAdd(title.trim(), time.ifBlank { null }); title = ""; time = ""
             }
-        }) {
-            Icon(Icons.Outlined.Bolt, null); Spacer(Modifier.width(6.dp)); Text("Agregar")
-        }
-        FilledTonalButton(onClick = onGenerate) {
-            Icon(Icons.Outlined.Refresh, null); Spacer(Modifier.width(6.dp)); Text("Generar HOY")
-        }
-        Button(onClick = onSave) {
-            Icon(Icons.Outlined.Save, null); Spacer(Modifier.width(6.dp)); Text("Guardar + Notificar")
-        }
+        }) { Icon(Icons.Outlined.Bolt, null); Spacer(Modifier.width(6.dp)); Text("Agregar") }
+        FilledTonalButton(onClick = onGenerate) { Icon(Icons.Outlined.Refresh, null); Spacer(Modifier.width(6.dp)); Text("Generar HOY") }
+        Button(onClick = onSave) { Icon(Icons.Outlined.Save, null); Spacer(Modifier.width(6.dp)); Text("Guardar + Notificar") }
     }
     Spacer(Modifier.height(12.dp))
     Row(verticalAlignment = Alignment.CenterVertically) {
