@@ -13,7 +13,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -28,8 +27,9 @@ import com.example.routineapp.util.scheduleReminder
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 enum class Tab { HOY, PESAS, FUTBOL, ESTUDIO, STATS }
 
@@ -72,7 +72,7 @@ class MainActivity : ComponentActivity() {
                         )
                     },
                     bottomBar = {
-                        // Barra inferior sin NavigationBar/NavigationBarItem
+                        // Barra inferior ligera (sin NavigationBar para evitar dependencias)
                         Surface(tonalElevation = 3.dp) {
                             Row(
                                 Modifier
@@ -125,6 +125,8 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/** ---------- UI helpers ---------- */
+
 @Composable
 private fun BottomTabButton(
     value: Tab,
@@ -145,6 +147,8 @@ private fun BottomTabButton(
         Text(label, style = MaterialTheme.typography.labelSmall, color = color)
     }
 }
+
+/** ---------- Tabs ---------- */
 
 @Composable
 fun TodayTab(
@@ -197,10 +201,19 @@ fun TodayTab(
     Text("$done / ${items.size} completadas", fontWeight = FontWeight.SemiBold)
     Spacer(Modifier.height(8.dp))
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    // Lista con padding inferior para no chocar con la barra de navegación
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(bottom = 96.dp)
+    ) {
         itemsIndexed(display) { _, item ->
             ElevatedCard(Modifier.fillMaxWidth()) {
-                Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(item.time ?: "—", modifier = Modifier.width(64.dp), fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.width(8.dp))
                     Checkbox(
@@ -218,31 +231,11 @@ fun TodayTab(
     }
 }
 
-fun generateTodayPlan(): List<RoutineItem> {
-    val dow = LocalDate.now().dayOfWeek
-    val list = mutableListOf<RoutineItem>()
-    list += RoutineItem("Levantarse", "07:00", false)
-    list += RoutineItem("Trabajo", "08:00", false)
-    val pesas = when (dow) {
-        DayOfWeek.MONDAY -> "Pesas: Empuje (Pecho/Hombro/Tríceps)"
-        DayOfWeek.TUESDAY -> "Pesas: Piernas (Cuádriceps/Glúteo)"
-        DayOfWeek.WEDNESDAY -> "Pesas: Tirón (Espalda/Bíceps)"
-        DayOfWeek.THURSDAY -> "Pesas: Full Body ligero"
-        DayOfWeek.FRIDAY -> "Pesas: Core + movilidad"
-        else -> null
-    }
-    pesas?.let { list += RoutineItem(it, "16:00", false) }
-    list += RoutineItem("Estudio programación (2h)", "17:15", false)
-    list += RoutineItem("Fútbol: rondos/decisiones 20-30m", "21:00", false)
-    list += RoutineItem("Higiene / Ordenar cuarto", "22:00", false)
-    return list
-}
-
 @Composable
 fun WeightsTab(exList: List<Exercise>, onUpdate: (List<Exercise>) -> Unit) {
     Text("Rutina del día (mancuernas/barra)", fontWeight = FontWeight.Bold)
     Spacer(Modifier.height(8.dp))
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 96.dp)) {
         itemsIndexed(exList) { idx, e ->
             ElevatedCard {
                 Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -286,7 +279,7 @@ fun defaultWeightsPlan(): List<Exercise> {
         DayOfWeek.THURSDAY -> listOf(
             Exercise("Peso muerto rumano", 4, 8),
             Exercise("Press militar", 3, 10),
-            Exercise("Plancha", 3, 45),
+            Exercise("Plancha (seg)", 3, 45),
         )
         DayOfWeek.FRIDAY -> listOf(
             Exercise("Rueda abdominal / Hollow", 4, 12),
@@ -307,7 +300,7 @@ fun FootballTab() {
         "Juego posicional 3 zonas (2x8')",
         "Primer control + pase (3x8')"
     )
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 96.dp)) {
         itemsIndexed(drills) { _, d ->
             ElevatedCard { Text(d, modifier = Modifier.padding(14.dp)) }
         }
@@ -324,7 +317,7 @@ fun StudyTab() {
     var running by remember { mutableStateOf(false) }
     var onWork by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
-    var job by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    var job by remember { mutableStateOf<Job?>(null) }
 
     fun start() {
         if (running) return
@@ -360,7 +353,11 @@ fun StudyTab() {
         )
     }
     Spacer(Modifier.height(10.dp))
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.padding(bottom = 12.dp)
+    ) {
         Button(onClick = { start() }) { Text(if (running) "Continuar" else "Iniciar") }
         FilledTonalButton(onClick = { pause() }) { Text("Pausar") }
         OutlinedButton(onClick = { reset() }) { Text("Reset") }
@@ -386,10 +383,33 @@ fun StatsTab(history: List<DayHistory>) {
             var py = size.height * (1f - last14[0].let { if (it.total == 0) 0f else it.done.toFloat() / it.total })
             for (i in 1 until last14.size) {
                 val pct = last14[i].let { if (it.total == 0) 0f else it.done.toFloat() / it.total }
-                val x = i * step; val y = size.height * (1f - pct)
+                val x = i * step
+                val y = size.height * (1f - pct)
                 drawLine(Color(0xFF6B7D57), Offset(px, py), Offset(x, y), strokeWidth = 6f)
                 px = x; py = y
             }
         }
     }
+}
+
+/** ---------- Utilidades ---------- */
+
+fun generateTodayPlan(): List<RoutineItem> {
+    val dow = LocalDate.now().dayOfWeek
+    val list = mutableListOf<RoutineItem>()
+    list += RoutineItem("Levantarse", "07:00", false)
+    list += RoutineItem("Trabajo", "08:00", false)
+    val pesas = when (dow) {
+        DayOfWeek.MONDAY -> "Pesas: Empuje (Pecho/Hombro/Tríceps)"
+        DayOfWeek.TUESDAY -> "Pesas: Piernas (Cuádriceps/Glúteo)"
+        DayOfWeek.WEDNESDAY -> "Pesas: Tirón (Espalda/Bíceps)"
+        DayOfWeek.THURSDAY -> "Pesas: Full Body ligero"
+        DayOfWeek.FRIDAY -> "Pesas: Core + movilidad"
+        else -> null
+    }
+    pesas?.let { list += RoutineItem(it, "16:00", false) }
+    list += RoutineItem("Estudio programación (2h)", "17:15", false)
+    list += RoutineItem("Fútbol: rondos/decisiones 20-30m", "21:00", false)
+    list += RoutineItem("Higiene / Ordenar cuarto", "22:00", false)
+    return list
 }
